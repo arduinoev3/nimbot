@@ -7,7 +7,7 @@ token="1122823442:AAE2gFGVMxybOYWj-6ljGjFTwZji4Po87SI"
 bot=telebot.TeleBot(token)
 
 
-N = 4
+N = 2
 queue = deque()
 games = []
 
@@ -33,15 +33,10 @@ def start_message(message):
     if len(queue) >= N:
         players = [queue.popleft() for _ in range(N)]
 
-        for p in players:
-            markup=types.ReplyKeyboardMarkup(resize_keyboard=True)
-            item1=types.KeyboardButton("Я стартапер")
-            item2=types.KeyboardButton("Я работник")
-            markup.add(item1)
-            markup.add(item2)
-            bot.send_message(p, "Игроки нашлись!!! Теперь напиши свой выбор - выбери кнопку",reply_markup=markup)
+        bot.send_message(players[0], "Игроки нашлись!!! Теперь напиши свой выбор - сейчас на столе 13 камешков. Делай свой выбор и напиши нам число от 1 до 4. Задача - забрать последний камень")
+        bot.send_message(players[1], "Игроки нашлись!!! Ты ходишь вторым - жди")
         
-        games.append([players, 0, [-1] * N, [0] * N])
+        games.append([players, 0, 13])
 
 
 
@@ -57,47 +52,26 @@ def start_message(message):
         bot.send_message(id, "Тебя нет в игре - введи /start")
         return
     
-    if message.text not in {"Я стартапер", "Я работник"}:
+    if message.text not in {"1", "2", "3", "4"}:
         bot.send_message(id, "Неа")
         return
-    
-    if message.text == "Я стартапер":
-        games[g][2][i] = 0
-    else:
-        games[g][2][i] = 1
 
-    if -1 not in games[g][2]:
+    if games[g][2] > 0:
+        how = int(message.text)
 
-        if 0 in games[g][2] and 1 in games[g][2]:
-            workers = sum(games[g][2])
-            startups = N - workers
+        if i != games[g][1] % 2:
+            bot.send_message(id, "Сейчас не твой ход")
+        else:
+            games[g][2] -= how
+            games[g][1] += 1
 
-            payoff_workers = workers
-
-            if startups == 1:
-                payoff_startups = 106
-            elif startups == 2:
-                payoff_startups = 41
+            if games[g][2] <= 0:
+                bot.send_message(id, "Ты выиграл")
+                bot.send_message(games[g][0][games[g][1] % 2], f"Ты проиграл")
             else:
-                payoff_startups = 26
-            
-            for i in range(0, len(games[g][0])):
-                if games[g][2][i]:
-                    games[g][3][i] += payoff_workers
-                else:
-                    games[g][3][i] += payoff_startups
-
-
-        games[g][2] = [-1] * N
-        games[g][1] += 1
-
-        for i in range(0, len(games[g][0])):
-            bot.send_message(games[g][0][i], f"Раунд окончен - твой балл {games[g][3][i]}. Продолжаем!")
-        
-        for game in games:
-            for res in game[3]:
-                print(" " * (5 - len(str(res))), res, sep="", end="")
-            print("|", " " * (7 - len(str(sum(game[3]) / 4))), sum(game[3]) / 4, "|", sep="")
+                bot.send_message(id, "Ход завершен. Ждем соперника")
+                bot.send_message(games[g][0][games[g][1] % 2], f"Ходи, на столе {games[g][2]} камней")
+    
 
 
 bot.infinity_polling()
